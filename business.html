@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Financial Dashboard</title>
+  <link rel="stylesheet" href="business.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.0.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@1.0.0"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" />
+</head>
+<body>
+  <div class="top-header">
+    <h1>Financial Statement Dashboard</h1>
+    <!-- your info here, e.g. email, phone, links -->
+  </div>
+  <div class="navbar">
+    <button class="active" data-tab="income">Income Statement</button>
+    <button data-tab="balance">Balance Sheet</button>
+    <button data-tab="cashflow">Cash Flow</button>
+  </div>
+  <div id="income" class="tab-section active">
+    <div class="income-box">
+      <canvas id="revenueChart" width="400" height="200"></canvas>
+    </div>
+  </div>
+  <div id="balance" class="tab-section">
+    <div class="balance-box"></div>
+  </div>
+  <div id="cashflow" class="tab-section">
+    <div class="cashflow-card"></div>
+  </div>
+  <script src="business.js"></script>
+</body>
+</html>
+
+<!-- Place this script at the end of your body tag -->
+<script>
+  // Business Trial + Payment Gate (Frontend)
+  function getClientStatus() {
+    let info = localStorage.getItem('dashboard_client_status');
+    if (info) return JSON.parse(info);
+    const now = Date.now();
+    info = { trialStart: now, unlocked: false };
+    localStorage.setItem('dashboard_client_status', JSON.stringify(info));
+    return info;
+  }
+  function setUnlocked() {
+    let info = getClientStatus();
+    info.unlocked = true;
+    localStorage.setItem('dashboard_client_status', JSON.stringify(info));
+  }
+  function trialDaysLeft() {
+    const info = getClientStatus();
+    const msInDay = 24 * 60 * 60 * 1000;
+    const daysPassed = Math.floor((Date.now() - info.trialStart) / msInDay);
+    return Math.max(0, 7 - daysPassed);
+  }
+  function isTrialActive() {
+    return trialDaysLeft() > 0;
+  }
+  function isUnlocked() {
+    return getClientStatus().unlocked;
+  }
+  function showBusinessPaywall() {
+    if (isTrialActive() || isUnlocked()) return;
+    const overlay = document.createElement('div');
+    overlay.id = "dashboard-paywall";
+    Object.assign(overlay.style, {
+      position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh",
+      background: "rgba(255,255,255,0.97)", zIndex: 9999,
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      fontFamily: "'Segoe UI', Arial, sans-serif"
+    });
+    overlay.innerHTML = `
+      <div style="background:#fffbe6;border-radius:20px;box-shadow:0 8px 32px #29519722;padding:38px 36px;max-width:410px;text-align:center">
+        <div style="font-size:2rem;font-weight:700;color:#ff9800;margin-bottom:12px;">Dashboard Locked</div>
+        <div style="font-size:1.14rem;color:#b95d0b;margin-bottom:18px;">
+          Your free trial has ended.<br>
+          To continue using this dashboard for your business, please purchase a license.
+        </div>
+        <a href="https://your-payment-link.com" target="_blank"
+           style="display:inline-block;padding:12px 34px;font-size:1.13rem;background:linear-gradient(90deg,#ffa726,#ffd95b);color:#fff;font-weight:700;border:none;border-radius:7px;text-decoration:none;cursor:pointer;">
+           Buy Now / Subscribe
+        </a>
+        <div style="font-size:0.95rem;color:#b95d0b;margin:15px 0 0 0;">After payment, click the unlock button below or contact us to unlock your dashboard instantly.</div>
+        <button id="unlock-dashboard-btn" style="margin-top:16px;padding:11px 28px;font-size:1.09rem;background:#42a5f5;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">Unlock</button>
+        <div style="font-size:0.9rem;color:#888;margin-top:8px;">(For demo: unlocks instantly. For real business, unlock after confirming payment.)</div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.querySelector("#unlock-dashboard-btn").onclick = function() {
+      setUnlocked();
+      overlay.remove();
+      alert("Thank you! The dashboard is now unlocked for your business.");
+    };
+  }
+
+  // Show trial notice if trial is active
+  window.addEventListener('DOMContentLoaded', () => {
+    if (isTrialActive() && !isUnlocked()) {
+      const overlay = document.createElement('div');
+      overlay.id = "dashboard-trial";
+      Object.assign(overlay.style, {
+        position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh",
+        background: "rgba(255,255,255,0.97)", zIndex: 9999,
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        fontFamily: "'Segoe UI', Arial, sans-serif"
+      });
+      overlay.innerHTML = `
+        <div style="background:#f7f9fc;border-radius:20px;box-shadow:0 8px 32px #29519722;padding:38px 36px;max-width:410px;text-align:center">
+          <div style="font-size:2rem;font-weight:700;color:#2146da;margin-bottom:12px;">Free Trial</div>
+          <div style="font-size:1.15rem;color:#3b4cca;margin-bottom:12px;">
+            You have <span style="color:#187a27;font-weight:800;">${trialDaysLeft()}</span> day(s) left in your free trial.
+          </div>
+          <div style="font-size:1.05rem;color:#666;margin-bottom:18px;">
+            Use the dashboard for your business. After your trial, you’ll be asked to purchase a license.
+          </div>
+          <button id="close-trial-msg" style="margin-top:8px;padding:11px 34px;font-size:1.1rem;background:linear-gradient(90deg,#5376fa,#42a5f5);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;letter-spacing:0.03em;">Continue</button>
+        </div>`;
+      document.body.appendChild(overlay);
+      overlay.querySelector("#close-trial-msg").onclick = () => overlay.remove();
+    }
+    showBusinessPaywall();
+  });
+</script>
